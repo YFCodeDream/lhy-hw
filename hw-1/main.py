@@ -24,7 +24,7 @@ def main(args):
         'select_features': 'mic',
         'mic_percentile': 50,
         # 'select_features': 'manual',
-        # 'mic_percentile': [0, 1, 2, 3, 4...],
+        # 'manual_indices': [0, 1, 2, 3, 4...],
         'shuffle': True,
         'batch_size': args.batch_size
     }
