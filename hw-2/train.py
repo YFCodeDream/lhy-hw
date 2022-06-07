@@ -20,7 +20,7 @@ def trainer(train_loader, valid_loader, model, args, device):
 
     logging.info(model)
 
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
     optimizer = optim.AdamW(model.parameters(), lr=args.lr)
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, 0.5 ** (1 / args.lr_half_life))
 
@@ -55,7 +55,8 @@ def trainer(train_loader, valid_loader, model, args, device):
                 batch_seq_predictions_no_pad.append(seq_predictions_no_pad)
                 batch_cur_seq_labels_no_pad.append(cur_seq_labels_no_pad)
 
-            cur_seq_loss = loss_fn(torch.cat(batch_seq_predictions_no_pad), torch.cat(batch_cur_seq_labels_no_pad))
+            cur_seq_loss = loss_fn(torch.cat(batch_seq_predictions_no_pad).to(device),
+                                   torch.cat(batch_cur_seq_labels_no_pad).to(device))
 
             optimizer.zero_grad()
             cur_seq_loss.backward()
@@ -65,8 +66,9 @@ def trainer(train_loader, valid_loader, model, args, device):
             logging.info(f'batch index: {batch_idx + 1} / {len(train_loader)}, train loss: {cur_seq_loss.item():4f}')
 
         if args.validate:
-            mean_valid_loss = validater(valid_loader, model, loss_fn, args, device)
-            logging.info(f'validation result: {mean_valid_loss:4f}')
+            mean_valid_loss, total_seq_valid_acc = validater(valid_loader, model, loss_fn, args, device)
+            logging.info(f'validation result: epoch: {epoch + 1} / {args.num_epoch}, '
+                         f'valid loss: {mean_valid_loss:4f}, valid accuracy: {total_seq_valid_acc:4f}')
 
             if args.early_stopping:
                 if mean_valid_loss < lowest_valid_loss:

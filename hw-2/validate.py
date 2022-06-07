@@ -11,6 +11,9 @@ def validater(valid_loader, model, loss_fn, args, device):
     model.eval()
     seq_valid_loss = list()
 
+    total_seq_valid_acc = 0
+    total_valid_seq_len = 0
+
     for batch in tqdm(valid_loader, total=len(valid_loader), desc='validating...'):
         phone_ids, batch_padded_sequences, sequences_len, labels = batch
         batch_padded_sequences = batch_padded_sequences.to(device)
@@ -23,6 +26,7 @@ def validater(valid_loader, model, loss_fn, args, device):
             batch_cur_seq_labels_no_pad = list()
             for i, seq_predictions in enumerate(batch_seq_predictions):
                 cur_seq_len = sequences_len[i]
+                total_valid_seq_len += cur_seq_len
                 cur_seq_labels = labels[i]
 
                 seq_predictions_no_pad = seq_predictions[:cur_seq_len]
@@ -31,8 +35,11 @@ def validater(valid_loader, model, loss_fn, args, device):
                 batch_seq_predictions_no_pad.append(seq_predictions_no_pad)
                 batch_cur_seq_labels_no_pad.append(cur_seq_labels_no_pad)
 
-            cur_seq_loss = loss_fn(torch.cat(batch_seq_predictions_no_pad), torch.cat(batch_cur_seq_labels_no_pad))
+            cur_seq_loss = loss_fn(torch.cat(batch_seq_predictions_no_pad).to(device), torch.cat(batch_cur_seq_labels_no_pad).to(device))
 
-            seq_valid_loss.append(cur_seq_loss)
+            _, batch_seq_valid_pred = torch.max(torch.cat(batch_seq_predictions_no_pad).to(device), 1)
+            total_seq_valid_acc += (batch_seq_valid_pred.cpu() == torch.cat(batch_cur_seq_labels_no_pad).to('cpu')).sum().item()
 
-    return np.mean(seq_valid_loss)
+            seq_valid_loss.append(cur_seq_loss.item())
+
+    return np.mean(seq_valid_loss), total_seq_valid_acc / total_valid_seq_len
