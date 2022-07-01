@@ -1,26 +1,6 @@
 import torch.nn as nn
 
 
-class Conv2DBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, padding, batch_norm=True):
-        super().__init__()
-        self.batch_norm = batch_norm
-
-        self.conv2d_block = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size, padding),
-            nn.ReLU()
-        )
-
-        if self.batch_norm:
-            self.batch_norm_2d = nn.BatchNorm2d(out_channels)
-
-    def forward(self, x):
-        x = self.conv2d_block(x)
-        if self.batch_norm:
-            x = self.batch_norm_2d(x)
-        return x
-
-
 class LinearBlock(nn.Module):
     def __init__(self, input_dim, output_dim, batch_norm=True, dropout=True, dropout_prob=0.25):
         super().__init__()
@@ -41,4 +21,24 @@ class LinearBlock(nn.Module):
             x = self.batch_norm_1d(x)
         if self.dropout:
             x = self.dropout_layer(x)
+        return x
+
+
+class Conv2DBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, padding, groups=1, stride=(1, 1), batch_norm=True):
+        super().__init__()
+        self.batch_norm = batch_norm
+
+        self.conv2d_block = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size, padding, groups, stride),
+            nn.ReLU()
+        )
+
+        if self.batch_norm:
+            self.batch_norm_2d = nn.BatchNorm2d(out_channels)
+
+    def forward(self, x):
+        x = self.conv2d_block(x)
+        if self.batch_norm:
+            x = self.batch_norm_2d(x)
         return x
