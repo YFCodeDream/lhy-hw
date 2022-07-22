@@ -30,7 +30,7 @@ class Conv2DBlock(nn.Module):
         self.batch_norm = batch_norm
 
         self.conv2d_block = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size, padding, groups, stride),
+            nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, groups=groups),
             nn.ReLU()
         )
 

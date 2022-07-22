@@ -1,14 +1,26 @@
 import json
+import math
 
 from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 
 
 class FoodDataset(Dataset):
     def __init__(self, dataset_tuples):
         self.dataset_tuples = dataset_tuples
 
+        self.transform = transforms.Compose([
+            transforms.Resize((128, 128)),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(22.5),
+            transforms.ColorJitter(brightness=0.5, contrast=0.5, hue=0.5),
+            transforms.ToTensor()
+        ])
+
     def __getitem__(self, index):
-        pass
+        raw_image, label = self.dataset_tuples[index]
+        tfs_image = self.transform(raw_image)
+        return tfs_image, label
 
     def __len__(self):
         return len(self.dataset_tuples)
@@ -25,10 +37,15 @@ class FoodDataLoader(DataLoader):
 
         self.dataset = FoodDataset(cur_dataset_tuples)
 
+        if mode != 'test':
+            food_loader_kwargs.update({'shuffle': True})
+
         super().__init__(self.dataset, **food_loader_kwargs)
 
     def __len__(self):
-        pass
+        if self.drop_last:
+            return math.floor(len(self.dataset) / self.batch_size)
+        return math.ceil(len(self.dataset) / self.batch_size)
 
 
 def transform_dataset_dict_to_tuples(dataset_dict):
