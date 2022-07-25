@@ -10,6 +10,7 @@ class AlexNet(nn.Module):
         ((3, 3), (0, 0), (2, 2)),
         ((5, 5), (2, 2), (1, 1)),
         ((3, 3), (0, 0), (2, 2)),
+        ((3, 3), (0, 0), (2, 2))
     ]
 
     def __init__(self, num_classes, image_shape,
@@ -30,8 +31,6 @@ class AlexNet(nn.Module):
         )
 
         self.flatten = nn.Flatten()
-
-        self.conv2d_layers.modules()
 
         for mod_shape_conv_layers_param in AlexNet._mod_shape_conv_layers_params:
             image_width, image_height = \

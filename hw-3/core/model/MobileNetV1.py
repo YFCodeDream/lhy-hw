@@ -9,7 +9,7 @@ class DepthAndPointWiseConv2DBlock(nn.Module):
 
         self.depth_wise_conv2d = Conv2DBlock(in_channels, in_channels, kernel_size, padding,
                                              groups=in_channels, stride=depth_stride, batch_norm=batch_norm)
-        self.point_wise_conv2d = Conv2DBlock(in_channels, point_wise_channels, (1, 1), padding,
+        self.point_wise_conv2d = Conv2DBlock(in_channels, point_wise_channels, (1, 1), 'same',
                                              batch_norm=batch_norm)
 
     def forward(self, x):
@@ -23,17 +23,17 @@ class MobileNetV1(nn.Module):
 
         image_width, image_height = image_shape
 
-        self.conv_1 = Conv2DBlock(3, 32, (3, 3), 'same', stride=(2, 2))
+        self.conv_1 = Conv2DBlock(3, 32, (3, 3), 1, stride=(2, 2))
 
         self.depth_and_point_wise_layers = nn.Sequential(
             DepthAndPointWiseConv2DBlock(32, 64, (3, 3), 'same'),
-            DepthAndPointWiseConv2DBlock(64, 128, (3, 3), 'same', (2, 2)),
+            DepthAndPointWiseConv2DBlock(64, 128, (3, 3), 1, depth_stride=(2, 2)),
             DepthAndPointWiseConv2DBlock(128, 128, (3, 3), 'same'),
-            DepthAndPointWiseConv2DBlock(128, 256, (3, 3), 'same', (2, 2)),
+            DepthAndPointWiseConv2DBlock(128, 256, (3, 3), 1, depth_stride=(2, 2)),
             DepthAndPointWiseConv2DBlock(256, 256, (3, 3), 'same'),
-            DepthAndPointWiseConv2DBlock(256, 512, (3, 3), 'same', (2, 2)),
+            DepthAndPointWiseConv2DBlock(256, 512, (3, 3), 1, depth_stride=(2, 2)),
             *[DepthAndPointWiseConv2DBlock(512, 512, (3, 3), 'same') for _ in range(5)],
-            DepthAndPointWiseConv2DBlock(512, 1024, (3, 3), 'same', (2, 2)),
+            DepthAndPointWiseConv2DBlock(512, 1024, (3, 3), 1, depth_stride=(2, 2)),
             DepthAndPointWiseConv2DBlock(1024, 1024, (3, 3), 'same')
         )
 

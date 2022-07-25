@@ -1,6 +1,7 @@
 import json
 import math
 
+from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
@@ -18,7 +19,8 @@ class FoodDataset(Dataset):
         ])
 
     def __getitem__(self, index):
-        raw_image, label = self.dataset_tuples[index]
+        filename, label = self.dataset_tuples[index]
+        raw_image = Image.open(filename)
         tfs_image = self.transform(raw_image)
         return tfs_image, label
 
@@ -52,5 +54,5 @@ def transform_dataset_dict_to_tuples(dataset_dict):
     dataset_tuple_list = list()
     for image_label, filenames in dataset_dict.items():
         for filename in filenames:
-            dataset_tuple_list.append((filename, image_label))
+            dataset_tuple_list.append((filename, int(image_label)))
     return dataset_tuple_list

@@ -4,6 +4,7 @@ import torch.nn as nn
 class LinearBlock(nn.Module):
     def __init__(self, input_dim, output_dim, batch_norm=True, dropout=True, dropout_prob=0.25):
         super().__init__()
+        # print(input_dim, output_dim)
         self.linear_block = nn.Sequential(
             nn.Linear(input_dim, output_dim),
             nn.ReLU()
