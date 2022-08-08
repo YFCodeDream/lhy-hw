@@ -5,7 +5,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from tqdm import tqdm
 
+from core.model.GoogLeNet import GoogLeNet
 from validate import validater
 
 
@@ -39,11 +41,23 @@ def trainer(train_loader, valid_loader, model, config, device):
     for epoch in range(start_epoch, config.num_epoch):
         model.train()
         train_loss = list()
-        for tfs_images, labels in train_loader:
+        train_loader_processor = tqdm(train_loader, desc='processing batch data: ')
+        for batch_index, (tfs_images, labels) in enumerate(train_loader_processor):
             tfs_images = tfs_images.to(device)
             logits = model(tfs_images)
-            loss = loss_fn(logits, labels.to(device))
+
+            if isinstance(model, GoogLeNet):
+                logits, aux_1_res, aux_2_res = logits
+                loss_1 = loss_fn(logits, labels.to(device))
+                loss_2 = loss_fn(aux_1_res, labels.to(device))
+                loss_3 = loss_fn(aux_2_res, labels.to(device))
+                loss = loss_1 + 0.3 * loss_2 + 0.3 * loss_3
+            else:
+                loss = loss_fn(logits, labels.to(device))
+
             train_loss.append(loss.item())
+            train_loader_processor.set_description(f'processing batch data, index: {batch_index + 1}')
+            train_loader_processor.set_postfix({'loss': loss.item()})
 
             optimizer.zero_grad()
             loss.backward()

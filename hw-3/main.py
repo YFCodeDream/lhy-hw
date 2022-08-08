@@ -7,7 +7,7 @@ from core.data.data_classes import FoodDataLoader
 from train import trainer
 from util.randomizer import same_seed
 
-from core.model import AlexNet, MobileNetV1, VGG16
+from core.model import AlexNet, MobileNet, VGG16, GoogLeNet, ResNet
 
 
 def main(config):
@@ -28,7 +28,10 @@ def main(config):
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    model = MobileNetV1.MobileNetV1(num_classes=11, image_shape=image_shape).to(device)
+    model = ResNet.ResNet50(num_classes=11).to(device)
+    # model = ResNet.ResNet18(num_classes=11).to(device)
+    # model = GoogLeNet.GoogLeNet(num_classes=11, image_shape=image_shape).to(device)
+    # model = MobileNet.MobileNetV1(num_classes=11, image_shape=image_shape).to(device)
     # model = AlexNet.AlexNet(num_classes=11, image_shape=image_shape).to(device)
     # model = VGG16.VGG16Net(num_classes=11, image_shape=image_shape).to(device)
 

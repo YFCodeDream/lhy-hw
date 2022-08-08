@@ -28,6 +28,7 @@ class FoodDataset(Dataset):
         return len(self.dataset_tuples)
 
 
+# noinspection PyTypeChecker
 class FoodDataLoader(DataLoader):
     def __init__(self, **food_loader_kwargs):
         dataset_filename_json_path = str(food_loader_kwargs.pop('dataset_filename_json'))
