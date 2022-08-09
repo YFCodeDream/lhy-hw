@@ -3,6 +3,15 @@ import torch.nn.functional as F
 
 __all__ = ('ResNet18', 'ResNet34', 'ResNet50', 'ResNet101', 'ResNet152')
 
+resnet_pretrain_weights = {
+    'resnet_18': 'https://download.pytorch.org/models/resnet18-f37072fd.pth',
+    'resnet_34': 'https://download.pytorch.org/models/resnet34-b627a593.pth',
+    'resnet_50': 'https://download.pytorch.org/models/resnet50-11ad3fa6.pth',
+    'resnet_101': 'https://download.pytorch.org/models/resnet101-cd907fc2.pth',
+    'resnet_152': 'https://download.pytorch.org/models/resnet152-f82ba261.pth',
+    'resnext_50': 'https://download.pytorch.org/models/resnext50_32x4d-1a0047aa.pth'
+}
+
 
 class BasicBlock(nn.Module):
     """
@@ -11,9 +20,11 @@ class BasicBlock(nn.Module):
     # 标志残差结构里卷积核个数的扩展倍数
     kernel_expansion = 1
 
-    def __init__(self, in_channels, out_channels, stride=(1, 1), down_sample=None):
+    def __init__(self, in_channels, out_channels, stride=(1, 1), down_sample=None, **kwargs):
         # down_sample对应每个block第一层改变通道数的残差结构（虚线分支）
         super().__init__()
+
+        assert len(kwargs.items()) != 0
 
         self.conv_block_1 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels,
@@ -47,28 +58,32 @@ class BottleNeck(nn.Module):
     # 标志残差结构里卷积核个数的扩展倍数
     kernel_expansion = 4
 
-    def __init__(self, in_channels, out_channels, stride=(1, 1), down_sample=None):
+    def __init__(self, in_channels, main_channels,
+                 stride=(1, 1), down_sample=None, groups=1, width_per_group=64):
         super().__init__()
 
+        main_width = int(main_channels * (width_per_group / 64.)) * groups
+
         self.conv_block_1 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels,
+            nn.Conv2d(in_channels, main_width,
                       kernel_size=(1, 1), stride=(1, 1), bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(main_width),
             nn.ReLU()
         )
 
         self.conv_block_2 = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels,
-                      kernel_size=(3, 3), stride=stride, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.Conv2d(main_width, main_width,
+                      kernel_size=(3, 3), stride=stride, padding=1, bias=False, groups=groups),
+            nn.BatchNorm2d(main_width),
             nn.ReLU()
         )
 
         self.conv_block_3 = nn.Sequential(
-            nn.Conv2d(out_channels, BottleNeck.kernel_expansion * out_channels,
+            nn.Conv2d(main_width, BottleNeck.kernel_expansion * main_channels,
                       kernel_size=(1, 1), stride=(1, 1), bias=False),
-            nn.BatchNorm2d(BottleNeck.kernel_expansion * out_channels)
+            nn.BatchNorm2d(BottleNeck.kernel_expansion * main_channels)
         )
+
         self.down_sample = down_sample
 
     def forward(self, x):
@@ -84,7 +99,8 @@ class BottleNeck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, block_num: list, num_classes, include_top=True, init_weight=True):
+    def __init__(self, block, block_num: list, num_classes,
+                 groups=1, width_per_group=64, include_top=True, init_weight=True):
         # block_num传入一个列表，表示每个stage堆叠res block的个数
         # e.g. ResNet34为[3, 4, 6, 3]
         super().__init__()
@@ -107,11 +123,13 @@ class ResNet(nn.Module):
 
         self.max_pool = nn.MaxPool2d(kernel_size=(3, 3), stride=(2, 2), padding=1)
 
-        all_stage_layers = self._make_stage(block, block_num[0], self.each_stage_main_channels[0])
+        all_stage_layers = self._make_stage(block, block_num[0], self.each_stage_main_channels[0],
+                                            groups=groups, width_per_group=width_per_group)
 
         for i in range(1, len(self.each_stage_main_channels)):
             all_stage_layers.extend(
-                self._make_stage(block, block_num[i], self.each_stage_main_channels[i], stride=(2, 2)))
+                self._make_stage(block, block_num[i], self.each_stage_main_channels[i],
+                                 stride=(2, 2), groups=groups, width_per_group=width_per_group))
 
         self.all_stage_layers = nn.Sequential(*all_stage_layers)
 
@@ -135,7 +153,7 @@ class ResNet(nn.Module):
 
         return x
 
-    def _make_stage(self, block, block_num, stage_main_channels, stride=(1, 1)):
+    def _make_stage(self, block, block_num, stage_main_channels, stride=(1, 1), groups=1, width_per_group=64):
         down_sample = None
 
         # stage_out_channels: 当前stage应该输出的channel数
@@ -149,12 +167,12 @@ class ResNet(nn.Module):
             )
 
         stage_layers = [block(self.stage_in_channels, stage_main_channels,
-                              down_sample=down_sample, stride=stride)]
-
-        self.stage_in_channels = stage_out_channels
+                              down_sample=down_sample, stride=stride, groups=groups, width_per_group=width_per_group)]
 
         for _ in range(1, block_num):
-            stage_layers.append(block(self.stage_in_channels, stage_main_channels))
+            stage_layers.append(block(stage_out_channels, stage_main_channels))
+
+        self.stage_in_channels = stage_out_channels
 
         return stage_layers
 
@@ -165,6 +183,8 @@ class ResNet(nn.Module):
 
 
 class ResNet18(nn.Module):
+    model_name = 'resnet_18'
+
     def __init__(self, num_classes, include_top=True, init_weight=True):
         super().__init__()
 
@@ -176,6 +196,8 @@ class ResNet18(nn.Module):
 
 
 class ResNet34(nn.Module):
+    model_name = 'resnet_34'
+
     def __init__(self, num_classes, include_top=True, init_weight=True):
         super().__init__()
 
@@ -187,6 +209,8 @@ class ResNet34(nn.Module):
 
 
 class ResNet50(nn.Module):
+    model_name = 'resnet_50'
+
     def __init__(self, num_classes, include_top=True, init_weight=True):
         super().__init__()
 
@@ -198,6 +222,8 @@ class ResNet50(nn.Module):
 
 
 class ResNet101(nn.Module):
+    model_name = 'resnet_101'
+
     def __init__(self, num_classes, include_top=True, init_weight=True):
         super().__init__()
 
@@ -209,6 +235,8 @@ class ResNet101(nn.Module):
 
 
 class ResNet152(nn.Module):
+    model_name = 'resnet_152'
+
     def __init__(self, num_classes, include_top=True, init_weight=True):
         super().__init__()
 
@@ -217,3 +245,16 @@ class ResNet152(nn.Module):
 
     def forward(self, x):
         return self.resnet_152(x)
+
+
+class ResNeXt50(nn.Module):
+    model_name = 'resnext_50'
+
+    def __init__(self, num_classes, groups=32, width_per_group=4, include_top=True, init_weight=True):
+        super().__init__()
+
+        self.resnext_50 = ResNet(BottleNeck, [3, 4, 6, 3], num_classes,
+                                 groups, width_per_group, include_top, init_weight)
+
+    def forward(self, x):
+        return self.resnext_50(x)

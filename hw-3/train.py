@@ -22,6 +22,9 @@ def trainer(train_loader, valid_loader, model, config, device):
 
     logging.info(model)
 
+    for config_key, config_value in vars(config).items():
+        logging.info(config_key + ': ' + str(config_value))
+
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=config.lr)
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, 0.5 ** (1 / config.lr_half_life))
@@ -67,9 +70,9 @@ def trainer(train_loader, valid_loader, model, config, device):
         logging.info(f'epoch [{epoch + 1} / {config.num_epoch}]: train loss: {np.mean(train_loss):.4f}')
 
         if config.validate:
-            valid_loss = validater(valid_loader, model, loss_fn, device)
-            logging.info('validation result: ')
-            logging.info(f'epoch [{epoch + 1} / {config.num_epoch}]: valid loss: {valid_loss:.4f}')
+            valid_loss, valid_acc = validater(valid_loader, model, loss_fn, device)
+
+            logging.info(f'validation result: valid loss: {valid_loss:.4f}, valid accuracy: {valid_acc:.4f}')
 
             if valid_loss < lowest_valid_loss:
                 lowest_valid_loss = valid_loss

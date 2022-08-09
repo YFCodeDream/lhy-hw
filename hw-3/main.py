@@ -5,9 +5,11 @@ import torch
 
 from core.data.data_classes import FoodDataLoader
 from train import trainer
+from util.pretrainer import get_pretrain_model
 from util.randomizer import same_seed
 
 from core.model import AlexNet, MobileNet, VGG16, GoogLeNet, ResNet
+from torchvision.models import resnet, googlenet
 
 
 def main(config):
@@ -28,7 +30,10 @@ def main(config):
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    model = ResNet.ResNet50(num_classes=11).to(device)
+    model = get_pretrain_model(ResNet.ResNet50, 11, ResNet.resnet_pretrain_weights.get(ResNet.ResNet50.model_name),
+                               config.pretrain_weight_save_dir, device, pretrain_frozen=False)
+    # model = ResNet.ResNeXt50(num_classes=11).to(device)
+    # model = ResNet.ResNet50(num_classes=11).to(device)
     # model = ResNet.ResNet18(num_classes=11).to(device)
     # model = GoogLeNet.GoogLeNet(num_classes=11, image_shape=image_shape).to(device)
     # model = MobileNet.MobileNetV1(num_classes=11, image_shape=image_shape).to(device)
@@ -40,8 +45,9 @@ def main(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_dir', default='./ckpt/')
+    parser.add_argument('--save_dir', default='./ckpts/ckpt-resnet50-pretrain')
     parser.add_argument('--dataset_filename_json', default='./dataset/generated/dataset_filename.json')
+    parser.add_argument('--pretrain_weight_save_dir', default='./pretrain/')
     parser.add_argument('--seed', default=1012)
     parser.add_argument('--validate', action='store_true')
     parser.add_argument('--lr', default=4e-4)
