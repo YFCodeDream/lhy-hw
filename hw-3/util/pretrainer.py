@@ -3,25 +3,23 @@ import urllib.request
 from collections import OrderedDict
 
 import torch
-from torch import nn
+
+from util.misc import show_download_progress_bar
 
 
-def get_pretrain_model(model_class, num_classes,
-                       pretrain_weight_url, pretrain_weight_save_dir, device, pretrain_frozen=False):
+def get_pretrain_model(model, pretrain_weight_url, pretrain_weight_save_dir, device, pretrain_frozen=False):
     if not os.path.exists(pretrain_weight_save_dir):
         os.mkdir(pretrain_weight_save_dir)
 
     assert os.path.isdir(pretrain_weight_save_dir)
 
-    model = model_class(num_classes=1000)  # imagenet_1k
-
-    pretrain_weight_filename = os.path.join(pretrain_weight_save_dir, model_class.model_name)
+    pretrain_weight_filename = os.path.join(pretrain_weight_save_dir, model.model_name)
 
     if not os.path.exists(pretrain_weight_filename):
-        print(f'pretrain weight for model: {model_class.model_name}, doesn\'t exist, start downloading...')
-        urllib.request.urlretrieve(pretrain_weight_url, pretrain_weight_filename)
+        print(f'pretrain weight for model: {model.model_name}, doesn\'t exist, start downloading...')
+        urllib.request.urlretrieve(pretrain_weight_url, pretrain_weight_filename, show_download_progress_bar)
     else:
-        print(f'pretrain weight for model: {model_class.model_name} exists')
+        print(f'pretrain weight for model: {model.model_name} exists')
 
     transfer_weights = \
         load_official_pretrain_weights_to_custom_model(model, torch.load(pretrain_weight_filename, map_location=device))
@@ -34,8 +32,8 @@ def get_pretrain_model(model_class, num_classes,
         for param in model.parameters():
             param.requires_grad = False
 
-    last_fc_in_features = getattr(model, model_class.model_name).fc.in_features
-    model.fc = nn.Linear(last_fc_in_features, num_classes)
+    # last_fc_in_features = getattr(model, model_class.model_name).fc.in_features
+    # model.fc = nn.Linear(last_fc_in_features, num_classes)
 
     model.to(device)
 
@@ -53,7 +51,8 @@ def load_official_pretrain_weights_to_custom_model(custom_model, official_pretra
     transfer_weights = OrderedDict()
 
     for idx, (official_param_name, official_param) in enumerate(official_pretrain_weights.items()):
-        if custom_model.state_dict()[custom_model_modules[idx]].numel() == official_param.numel():
+        if custom_model.state_dict()[custom_model_modules[idx]].shape == official_param.shape and \
+                custom_model_modules[idx].split('.')[-1] == official_param_name.split('.')[-1]:
             print(f'transfer official param: {official_param_name}, to custom model param: {custom_model_modules[idx]}')
             transfer_weights[custom_model_modules[idx]] = official_param
 

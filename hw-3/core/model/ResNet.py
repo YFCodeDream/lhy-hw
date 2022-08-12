@@ -1,9 +1,12 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-__all__ = ('ResNet18', 'ResNet34', 'ResNet50', 'ResNet101', 'ResNet152')
+__all__ = ('ResNet18', 'ResNet34', 'ResNet50', 'ResNet101', 'ResNet152', 'ResNeXt50',
+           'resnet_18', 'resnet_34', 'resnet_50', 'resnet_101', 'resnet_152', 'resnext_50')
 
-resnet_pretrain_weights = {
+from util.pretrainer import get_pretrain_model
+
+pretrain_weights = {
     'resnet_18': 'https://download.pytorch.org/models/resnet18-f37072fd.pth',
     'resnet_34': 'https://download.pytorch.org/models/resnet34-b627a593.pth',
     'resnet_50': 'https://download.pytorch.org/models/resnet50-11ad3fa6.pth',
@@ -13,6 +16,7 @@ resnet_pretrain_weights = {
 }
 
 
+# noinspection PyUnusedLocal
 class BasicBlock(nn.Module):
     """
     18 & 34
@@ -23,8 +27,6 @@ class BasicBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=(1, 1), down_sample=None, **kwargs):
         # down_sample对应每个block第一层改变通道数的残差结构（虚线分支）
         super().__init__()
-
-        assert len(kwargs.items()) != 0
 
         self.conv_block_1 = nn.Sequential(
             nn.Conv2d(in_channels, out_channels,
@@ -100,7 +102,7 @@ class BottleNeck(nn.Module):
 
 class ResNet(nn.Module):
     def __init__(self, block, block_num: list, num_classes,
-                 groups=1, width_per_group=64, include_top=True, init_weight=True):
+                 groups=1, width_per_group=64, include_top=True, init_weights=True):
         # block_num传入一个列表，表示每个stage堆叠res block的个数
         # e.g. ResNet34为[3, 4, 6, 3]
         super().__init__()
@@ -138,7 +140,7 @@ class ResNet(nn.Module):
             self.flatten = nn.Flatten()
             self.fc = nn.Linear(self.each_stage_main_channels[-1] * block.kernel_expansion, num_classes)
 
-        if init_weight:
+        if init_weights:
             self._init_weights()
 
     def forward(self, x):
@@ -182,79 +184,110 @@ class ResNet(nn.Module):
                 nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
 
 
+def resnet(resnet_class, num_classes, include_top=True, init_weights=True, pretrain=False, **pretrain_kwargs):
+    model = resnet_class(num_classes, include_top, init_weights)
+    if pretrain:
+        return get_pretrain_model(model, pretrain_weights.get(model.model_name), **pretrain_kwargs)
+    return model.to(pretrain_kwargs.get('device'))
+
+
 class ResNet18(nn.Module):
     model_name = 'resnet_18'
 
-    def __init__(self, num_classes, include_top=True, init_weight=True):
+    def __init__(self, num_classes, include_top=True, init_weights=True):
         super().__init__()
 
         self.resnet_18 = ResNet(BasicBlock, [2, 2, 2, 2], num_classes,
-                                include_top=include_top, init_weight=init_weight)
+                                include_top=include_top, init_weights=init_weights)
 
     def forward(self, x):
         return self.resnet_18(x)
 
 
+def resnet_18(num_classes, include_top=True, init_weights=True, pretrain=False, **pretrain_kwargs):
+    return resnet(ResNet18, num_classes, include_top, init_weights, pretrain, **pretrain_kwargs)
+
+
 class ResNet34(nn.Module):
     model_name = 'resnet_34'
 
-    def __init__(self, num_classes, include_top=True, init_weight=True):
+    def __init__(self, num_classes, include_top=True, init_weights=True):
         super().__init__()
 
         self.resnet_34 = ResNet(BasicBlock, [3, 4, 6, 3], num_classes,
-                                include_top=include_top, init_weight=init_weight)
+                                include_top=include_top, init_weights=init_weights)
 
     def forward(self, x):
         return self.resnet_34(x)
 
 
+def resnet_34(num_classes, include_top=True, init_weights=True, pretrain=False, **pretrain_kwargs):
+    return resnet(ResNet34, num_classes, include_top, init_weights, pretrain, **pretrain_kwargs)
+
+
 class ResNet50(nn.Module):
     model_name = 'resnet_50'
 
-    def __init__(self, num_classes, include_top=True, init_weight=True):
+    def __init__(self, num_classes, include_top=True, init_weights=True):
         super().__init__()
 
         self.resnet_50 = ResNet(BottleNeck, [3, 4, 6, 3], num_classes,
-                                include_top=include_top, init_weight=init_weight)
+                                include_top=include_top, init_weights=init_weights)
 
     def forward(self, x):
         return self.resnet_50(x)
 
 
+def resnet_50(num_classes, include_top=True, init_weights=True, pretrain=False, **pretrain_kwargs):
+    return resnet(ResNet50, num_classes, include_top, init_weights, pretrain, **pretrain_kwargs)
+
+
 class ResNet101(nn.Module):
     model_name = 'resnet_101'
 
-    def __init__(self, num_classes, include_top=True, init_weight=True):
+    def __init__(self, num_classes, include_top=True, init_weights=True):
         super().__init__()
 
         self.resnet_101 = ResNet(BottleNeck, [3, 4, 23, 3], num_classes,
-                                 include_top=include_top, init_weight=init_weight)
+                                 include_top=include_top, init_weights=init_weights)
 
     def forward(self, x):
         return self.resnet_101(x)
 
 
+def resnet_101(num_classes, include_top=True, init_weights=True, pretrain=False, **pretrain_kwargs):
+    return resnet(ResNet101, num_classes, include_top, init_weights, pretrain, **pretrain_kwargs)
+
+
 class ResNet152(nn.Module):
     model_name = 'resnet_152'
 
-    def __init__(self, num_classes, include_top=True, init_weight=True):
+    def __init__(self, num_classes, include_top=True, init_weights=True):
         super().__init__()
 
         self.resnet_152 = ResNet(BottleNeck, [3, 8, 36, 3], num_classes,
-                                 include_top=include_top, init_weight=init_weight)
+                                 include_top=include_top, init_weights=init_weights)
 
     def forward(self, x):
         return self.resnet_152(x)
 
 
+def resnet_152(num_classes, include_top=True, init_weights=True, pretrain=False, **pretrain_kwargs):
+    return resnet(ResNet152, num_classes, include_top, init_weights, pretrain, **pretrain_kwargs)
+
+
 class ResNeXt50(nn.Module):
     model_name = 'resnext_50'
 
-    def __init__(self, num_classes, groups=32, width_per_group=4, include_top=True, init_weight=True):
+    def __init__(self, num_classes, groups=32, width_per_group=4, include_top=True, init_weights=True):
         super().__init__()
 
         self.resnext_50 = ResNet(BottleNeck, [3, 4, 6, 3], num_classes,
-                                 groups, width_per_group, include_top, init_weight)
+                                 groups, width_per_group, include_top, init_weights)
 
     def forward(self, x):
         return self.resnext_50(x)
+
+
+def resnext_50(num_classes, include_top=True, init_weights=True, pretrain=False, **pretrain_kwargs):
+    return resnet(ResNeXt50, num_classes, include_top, init_weights, pretrain, **pretrain_kwargs)

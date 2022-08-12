@@ -4,11 +4,17 @@ import torch.nn as nn
 from util.misc import calc_conv2d_image_shape
 
 
+pretrain_weights = {
+    'google_net': 'https://download.pytorch.org/models/googlenet-1378be20.pth'
+}
+
+
 class Conv2dBlock(nn.Module):
     def __init__(self, in_channels, out_channels, **conv2d_kwargs):
         super().__init__()
         self.conv2d_block = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, **conv2d_kwargs),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU()
         )
 
@@ -62,8 +68,6 @@ class InceptionAux(nn.Module):
         for params in InceptionAux._inception_aux_mod_shape_params:
             image_width, image_height = calc_conv2d_image_shape(image_width, image_height, *params)
 
-        print(image_width, image_height)
-
         self.flatten = nn.Flatten()
 
         self.linear_layers = nn.Sequential(
@@ -81,7 +85,9 @@ class InceptionAux(nn.Module):
 
 
 class GoogLeNet(nn.Module):
-    def __init__(self, image_shape, num_classes, aux_logits=True, init_weights=False):
+    model_name = 'google_net'
+
+    def __init__(self, image_shape, num_classes, aux_logits=True, init_weights=True):
         super().__init__()
 
         image_width, image_height = image_shape
@@ -170,3 +176,7 @@ class GoogLeNet(nn.Module):
             elif isinstance(module, nn.Linear):
                 nn.init.normal_(module.weight, 0, 0.01)
                 nn.init.constant_(module.bias, 0)
+
+
+def google_net(image_shape, num_classes, aux_logits=True, init_weights=True, **model_kwargs):
+    return GoogLeNet(image_shape, num_classes, aux_logits, init_weights).to(model_kwargs.get('device'))

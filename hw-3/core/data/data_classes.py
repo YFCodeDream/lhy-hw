@@ -7,21 +7,36 @@ from torchvision import transforms
 
 
 class FoodDataset(Dataset):
-    def __init__(self, dataset_tuples):
+    def __init__(self, dataset_tuples, mode):
         self.dataset_tuples = dataset_tuples
 
-        self.transform = transforms.Compose([
-            transforms.Resize((128, 128)),
-            transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(22.5),
-            transforms.ColorJitter(brightness=0.5, contrast=0.5, hue=0.5),
-            transforms.ToTensor()
-        ])
+        self.transform = {
+            'train': transforms.Compose([
+                transforms.Resize((128, 128)),
+                transforms.RandomVerticalFlip(),
+                transforms.RandomRotation(22.5),
+                transforms.ColorJitter(brightness=0.5, contrast=0.5, hue=0.5),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ]),
+            'valid': transforms.Compose([
+                transforms.Resize((128, 128)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ]),
+            'test': transforms.Compose([
+                transforms.Resize((128, 128)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+        }
+
+        self.mode = mode
 
     def __getitem__(self, index):
         filename, label = self.dataset_tuples[index]
         raw_image = Image.open(filename)
-        tfs_image = self.transform(raw_image)
+        tfs_image = self.transform[self.mode](raw_image)
         return tfs_image, label
 
     def __len__(self):
@@ -38,7 +53,7 @@ class FoodDataLoader(DataLoader):
         cur_dataset_dict = dataset_filename_json[mode]
         cur_dataset_tuples = transform_dataset_dict_to_tuples(cur_dataset_dict)
 
-        self.dataset = FoodDataset(cur_dataset_tuples)
+        self.dataset = FoodDataset(cur_dataset_tuples, mode)
 
         if mode != 'test':
             food_loader_kwargs.update({'shuffle': True})
